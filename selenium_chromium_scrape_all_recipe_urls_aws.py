@@ -65,7 +65,6 @@ while True:
     # Calculate new scroll height and compare with last scroll height
     new_height = driver.execute_script("return document.body.scrollHeight")
     iter += 1
-
     # Every 10 iterations, or 100 recipes, store the recipe-ids and recipe-urls
     # in a database on AWS RDS
     if iter % 10 == 0:
@@ -84,6 +83,8 @@ while True:
     if new_height == last_height:
         break
     last_height = new_height
+    print(f"Scrape Counter: {iter}")
+    
 
 hrefs = driver.find_elements_by_class_name(desired_class_name)
 
