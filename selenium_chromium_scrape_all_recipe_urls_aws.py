@@ -12,24 +12,24 @@ import time
 import pandas as pd
 from typing import List
 import json
-from sqlaclhemy import create_engine
+from sqlalchemy import create_engine
 import psycopg2
 import logging
 # from pymongo import MongoClient
 
 # Prepare log handling
 logger = logging.getLogger('food_scraper')
-hdlr = logging.FileHandler('/home/ubuntu/Project/food_scraper.log')
+hdlr = logging.FileHandler('logs/food_scraper.log')
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.DEBUG)
 
 # connect to psql db
-engine = create_engine("posgresql:///recipes")
+engine = create_engine("postgresql:///recipe_list")
 
 # load selenium and Chrome options
-app_path = "/usr/local/bin/chromedriver"
+app_path = "/usr/bin/chromedriver"
 chrome_options = Options()
 chrome_options.add_argument("--headless")
 driver = Chrome(executable_path=app_path, chrome_options=chrome_options)
