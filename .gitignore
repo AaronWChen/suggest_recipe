@@ -1,0 +1,12 @@
+# Raw Data
+
+
+# Created Data
+'write_data/'
+
+# Previous Logs
+'logs/'
+
+# Test files
+'test_run.csv'
+'test.txt'
