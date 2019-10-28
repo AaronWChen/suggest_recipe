@@ -1,12 +1,18 @@
 # Raw Data
-
+food-com-recipes-and-user-interactions/
 
 # Created Data
-'write_data/'
+write_data/
 
 # Previous Logs
-'logs/'
+logs/
 
 # Test files
-'test_run.csv'
-'test.txt'
+test_run.csv
+test.txt
+
+# MacOS files
+.DS_Store
+
+# Credentials
+secrets/
