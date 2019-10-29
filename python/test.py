@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow import keras
-from keras import layers
+from tensorflow.keras import layers
 import collections
 import numpy as np
 
@@ -121,20 +121,33 @@ def train():
   valid_window = 100  # Only pick words in the head of the distribution
   valid_examples = np.random.choice(valid_window, valid_size, replace=False)
   
-  model = keras.Sequential([
-      keras.layers.Embedding(vocabulary_size, embedding_size),
-      keras.layers.GlobalAveragePooling1D(),
-      keras.layers.Dense(1, activation='softmax')
-  ])
+  train_inputs = tf.Variable(initial_value=tf.ones([1,1],
+                                                   dtype=tf.int32),
+                             validate_shape=False)
+
+  train_labels = tf.Variable(initial_value=tf.ones([1,1],
+                                                   dtype=tf.int32),
+                             validate_shape=False)
+
+  valid_dataset = tf.constant(valid_examples, dtype=tf.int32)
 
   words_processed_ph = tf.Variable(initial_value=tf.zeros(
                                                       [1,1], 
                                                       dtype=tf.int32), 
                                     validate_shape=False)
   words_to_train = float(words_per_epoch * epochs_desired)
+
   lr = learning_rate * tf.maximum(0.0001, 
                                   1.0 - tf.cast(words_processed_ph, 
                                                 tf.float32) / words_to_train)
+
+  model = keras.Sequential([
+                            keras.layers.Embedding(input_dim=vocabulary_size, 
+                                                   output_dim=embedding_size, 
+                                                  ),
+                            keras.layers.GlobalAveragePooling1D(),
+                            keras.layers.Dense(1, activation='softmax')
+                          ])
 
   if algo_optimizer == 'sgd':
     model.compile(optimizer=keras.optimizers.SGD(lr), 
@@ -148,6 +161,28 @@ def train():
                                                   epsilon=1e-6), 
                   loss='categorical_crossentropy', 
                   metrics=['accuracy'])
-    
-  print(model.summary())
+
+
+
+  num_steps = 1000001
+
+  average_loss = 0.
+  sentences_to_train = epochs_desired * len(data)
+
+  for step in range(num_steps):
+    if step < sentences_to_train:
+      batch_inputs, batch_labels = generate_batch(train_data, 
+                                                  words_per_epoch, 
+                                                  count)
+
+      #feed_dict = {train_inputs: batch_inputs,
+      #              train_labels: batch_labels,
+      #              words_processed_ph.experimental_ref(): words_processed}
+
+
+
+  #print(model.summary())
+  print(train_data)
+  #model.fit(np.array(train_data), epochs=epochs_desired)  
+  #model.evaluate(np.array(vad_data))
 train()
