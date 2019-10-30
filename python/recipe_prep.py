@@ -30,8 +30,12 @@ from sklearn.utils.extmath import _ravel
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 
-train_file = json.open("../raw_data/train.json")
-val_file = json.open("../raw_data/test.json")
+with open('../raw_data/train.json') as json_file:
+  train_file = json.load(json_file)
+
+with open('../raw_data/test.json') as json_file:
+  val_file = json.open("../raw_data/test.json")
+  
 save_path = "../write_data/"
 
 # Using some stopwords from https://github.com/AlludedCrabb/sound-tasty
