@@ -9,6 +9,8 @@ Debug the model with a held-out validation set.
 This model is heavily based on the work of Jaan Altosaar: github.com/altosaar
 and the project food2vec: github.com/altosaar/food2vec.
 
+However, Altosaar's work was dependent on modules in TensorFlow that have since
+
 The data for this version of the project, as well as the forked version of 
 Altosar's work, is provded by Yummly from the Kaggle competition "What's 
 Cooking?": https://www.kaggle.com/c/whats-cooking
@@ -18,18 +20,20 @@ Future data sources will be cited here.
 
 # Set initial parameters and import necessary modules
 import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
 import collections
 import numpy as np
 
-layers = tf.contrib.layers
+#layers = tf.contrib.layers
 
 train_path = "../raw_data/train.json"
 save_path = "../write_data"
 embedding_size = 100
-epochs_desired = 15
+epochs_to_use = 15
 learning_rate = 0.025
 regularization = 0.01
-optimizer = 'adam'
+algo_optimizer = 'adam'
 
 """# Functions used to handle complex strings
 def complex_flatten(list_of_lists):
@@ -159,6 +163,28 @@ def train():
   valid_window = 100  # Only pick words in the head of the distribution
   valid_examples = np.random.choice(valid_window, valid_size, replace=False)
 
+# Begin refactor to TF2.0 
+
+  model = keras.Sequential([
+      layers.Embedding(vocabulary_size, embedding_size),
+      layers.GlobalAveragePooling1D(),
+      layers.Dense(1, activation='softmax')
+  ])
+
+  if algo_optimizer == 'sgd':
+      model.compile(optimizer=keras.optimizers.SGD(lr), 
+                    loss='categorical_crossentropy', 
+                    metrics=['accuracy'])
+
+  elif algo_optimizer == 'adam':
+      model.compile(optimizer=keras.optimizers.Adam(lr, 
+                                                    beta1=0.9, 
+                                                    beta2=0.999,
+                                                    epsilon=1e-6), 
+                    loss='categorical_crossentropy',
+                    metrics=['accuracy'])
+  
+
   graph = tf.Graph()
   with graph.as_default():
     # Input data.
@@ -190,13 +216,13 @@ def train():
 
     # Construct the SGD optimizer using a decaying learning rate
     words_processed_ph = tf.placeholder(tf.int32, [])
-    words_to_train = float(words_per_epoch *epochs_to_train)
+    words_to_train = float(words_per_epoch *epochs_to_use)
     lr = learning_rate * tf.maximum(
         0.0001, 1.0 - tf.cast(words_processed_ph, tf.float32) / words_to_train)
 
-    if optimizer == 'sgd':
+    if algo_optimizer == 'sgd':
       optimizer = tf.train.GradientDescentOptimizer(lr)
-    elif optimizer == 'adam':
+    elif algo_optimizer == 'adam':
       optimizer = tf.train.AdamOptimizer(
           lr, beta1=0.9, beta2=0.999, epsilon=1e-6)
     train_op = optimizer.minimize(loss)
@@ -219,7 +245,7 @@ def train():
     init.run()
 
     average_loss = 0.
-    sentences_to_train = epochs_to_train * len(data)
+    sentences_to_train = epochs_to_use * len(data)
     for step in range(num_steps):
       if step < sentences_to_train:
         batch_inputs, batch_labels = generate_batch(train_data, words_per_epoch, count)
