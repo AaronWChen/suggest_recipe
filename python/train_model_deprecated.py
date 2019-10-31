@@ -9,8 +9,6 @@ Debug the model with a held-out validation set.
 This model is heavily based on the work of Jaan Altosaar: github.com/altosaar
 and the project food2vec: github.com/altosaar/food2vec.
 
-However, Altosaar's work was dependent on modules in TensorFlow that have since
-
 The data for this version of the project, as well as the forked version of 
 Altosar's work, is provded by Yummly from the Kaggle competition "What's 
 Cooking?": https://www.kaggle.com/c/whats-cooking
@@ -20,17 +18,16 @@ Future data sources will be cited here.
 
 # Set initial parameters and import necessary modules
 import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
+import tensorflow_addons as tfa
 import collections
 import numpy as np
 
-#layers = tf.contrib.layers
+#layers = tfa.contrib.layers
 
 train_path = "../raw_data/train.json"
 save_path = "../write_data"
 embedding_size = 100
-epochs_to_use = 15
+epochs_desired = 15
 learning_rate = 0.025
 regularization = 0.01
 algo_optimizer = 'adam'
@@ -163,43 +160,34 @@ def train():
   valid_window = 100  # Only pick words in the head of the distribution
   valid_examples = np.random.choice(valid_window, valid_size, replace=False)
 
-# Begin refactor to TF2.0 
-
-  model = keras.Sequential([
-      layers.Embedding(vocabulary_size, embedding_size),
-      layers.GlobalAveragePooling1D(),
-      layers.Dense(1, activation='softmax')
-  ])
-
-  if algo_optimizer == 'sgd':
-      model.compile(optimizer=keras.optimizers.SGD(lr), 
-                    loss='categorical_crossentropy', 
-                    metrics=['accuracy'])
-
-  elif algo_optimizer == 'adam':
-      model.compile(optimizer=keras.optimizers.Adam(lr, 
-                                                    beta1=0.9, 
-                                                    beta2=0.999,
-                                                    epsilon=1e-6), 
-                    loss='categorical_crossentropy',
-                    metrics=['accuracy'])
-  
-
   graph = tf.Graph()
   with graph.as_default():
     # Input data.
-    train_inputs = tf.placeholder(tf.int32, shape=[None])
-    train_labels = tf.placeholder(tf.int32, shape=[None, None])
+    #train_inputs = tf.placeholder(tf.int32, shape=[None])
+    train_inputs = tf.Variable(initial_value=tf.zeros([1,1], 
+                                                      dtype=tf.int32), 
+                                validate_shape=False,
+                                dtype=tf.int32)
+    
+    #train_labels = tf.placeholder(tf.int32, shape=[None, None])
+    train_labels = tf.Variable(initial_value=tf.zeros([1,1], 
+                                                      dtype=tf.int32), 
+                                validate_shape=False,
+                                dtype=tf.int32
+                                )
     train_indicators = tf.one_hot(
           train_labels, depth=vocabulary_size, on_value=1, off_value=0, axis=1)
     print(train_indicators)
-    train_indicators = tf.to_float(tf.reduce_sum(train_indicators, -1))
+    
+    #train_indicators = tf.to_float(tf.reduce_sum(train_indicators, -1))
+    train_indicators = tf.dtypes.cast(tf.reduce_sum(train_indicators, -1),
+                                          dtype=tf.float32)
     valid_dataset = tf.constant(valid_examples, dtype=tf.int32)
     # Ops and variables pinned to the CPU because of missing GPU implementation
     with tf.device('/cpu:0'):
       # Look up embeddings for inputs.
       embeddings = tf.Variable(
-          tf.random_uniform([vocabulary_size, embedding_size], -1.0, 1.0))
+          tf.random.uniform([vocabulary_size, embedding_size], -1.0, 1.0))
       example_emb = tf.nn.embedding_lookup(embeddings, train_inputs)
       # Construct the variables for the softmaxloss
       sm_w_t = tf.Variable(
@@ -207,25 +195,34 @@ def train():
       sm_b = tf.Variable(tf.zeros([vocabulary_size]))
     # logits: [batch_size, vocab_size]
     logits = tf.matmul(example_emb, sm_w_t, transpose_b=True) + sm_b
+    print(logits.shape)
     # Compute the average loss for the batch.
     log_lik = tf.reduce_mean(-tf.nn.sigmoid_cross_entropy_with_logits(
-        logits=logits, targets=train_indicators))
+        logits=tf.reshape(logits, (1, -1)), labels=train_indicators))
     regularizer_loss = (regularization * (
       tf.nn.l2_loss(sm_w_t) + tf.nn.l2_loss(example_emb)))
     loss = tf.reduce_mean(-log_lik) + regularizer_loss
 
     # Construct the SGD optimizer using a decaying learning rate
-    words_processed_ph = tf.placeholder(tf.int32, [])
-    words_to_train = float(words_per_epoch *epochs_to_use)
+    #words_processed_ph = tf.placeholder(tf.int32, [])
+    words_processed_ph = tf.Variable(initial_value=tf.zeros([1,1], 
+                                                      dtype=tf.int32), 
+                                      validate_shape=False)
+    words_to_train = float(words_per_epoch * epochs_desired)
     lr = learning_rate * tf.maximum(
         0.0001, 1.0 - tf.cast(words_processed_ph, tf.float32) / words_to_train)
 
     if algo_optimizer == 'sgd':
-      optimizer = tf.train.GradientDescentOptimizer(lr)
+      optimizer - tf.keras.optimizers.SGD(lr)
+      #optimizer = tf.keras.train.GradientDescentOptimizer(lr)
     elif algo_optimizer == 'adam':
-      optimizer = tf.train.AdamOptimizer(
-          lr, beta1=0.9, beta2=0.999, epsilon=1e-6)
-    train_op = optimizer.minimize(loss)
+      optimizer = tf.keras.optimizers.Adam(lr,
+                                            beta_1=0.9, 
+                                            beta_2=0.999, 
+                                            epsilon=1e-6)
+      #optimizer = tf.compat.v1.train.AdamOptimizer(
+      #    lr, beta1=0.9, beta2=0.999, epsilon=1e-6)
+    train_op = optimizer.minimize(loss, var_list=embeddings)
 
     # Compute the cosine similarity between minibatch examples and all embeddings.
     norm = tf.sqrt(tf.reduce_sum(tf.square(embeddings), 1, keep_dims=True))
@@ -245,7 +242,7 @@ def train():
     init.run()
 
     average_loss = 0.
-    sentences_to_train = epochs_to_use * len(data)
+    sentences_to_train = epochs_desired * len(data)
     for step in range(num_steps):
       if step < sentences_to_train:
         batch_inputs, batch_labels = generate_batch(train_data, words_per_epoch, count)
@@ -296,4 +293,4 @@ def main(_):
   train()
 
 if __name__ == '__main__':
-  tf.app.run()
+  tf.compat.v1.app.run()
