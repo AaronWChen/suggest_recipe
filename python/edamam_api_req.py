@@ -47,7 +47,7 @@ if resp.status_code == 200:
     response_dict = resp.json()
     resp_dict_hits = response_dict['hits']
     count = 0
-    with open("../write_data/test_api_hits_recipe.json", "w") as f:
+    with open("../write_data/test_api_hits_recipe_cuisinetype.json", "w") as f:
       json.dump(resp_dict_hits['recipe'], f)
 
 else:
