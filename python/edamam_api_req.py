@@ -12,6 +12,7 @@ import csv
 api_base = "https://api.edamam.com/search?"
 
 search_q = input("What are you looking for? ")
+cuisine_q = input("What is the cuisine style? ")
 # Implement lemmatization using trained dataset on input in order to make 
 # future database be less likely to have redundant entries 
 # (e.g., taco vs tacos)
@@ -47,8 +48,13 @@ if resp.status_code == 200:
     response_dict = resp.json()
     resp_dict_hits = response_dict['hits']
     count = 0
-    with open("../write_data/test_api_hits_recipe_cuisinetype.json", "w") as f:
-      json.dump(resp_dict_hits['recipe'], f)
+    with open(f"../write_data/{search_q}_edamam_api_return.json", "w") as f:
+      json.dump(resp_dict_hits, f)
+
+    with open(f"../write_data/{search_q}_cuisinetype.txt", "w") as t:
+      t.write(cuisine_q)
+
+    #return search_q, cuisine_q
 
 else:
   print("Error, unable to retrieve. Server response code is: ", 
