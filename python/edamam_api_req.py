@@ -45,17 +45,17 @@ api_call = api_base + q+ app_id_s + app_key_s #+ limiter
 resp = requests.get(api_call)
 
 if resp.status_code == 200:
-    response_dict = resp.json()
-    resp_dict_hits = response_dict['hits']
-    count = 0
-    with open(f"../write_data/{search_q}_edamam_api_return.json", "w") as f:
-      json.dump(resp_dict_hits, f)
+  response_dict = resp.json()
+  resp_dict_hits = response_dict['hits']
+  count = 0
+  with open(f"../write_data/{search_q}_edamam_api_return.json", "w") as f:
+    json.dump(resp_dict_hits, f)
 
-    with open(f"../write_data/{search_q}_cuisinetype.txt", "w") as t:
-      t.write(cuisine_q)
+  with open(f"../write_data/{search_q}_cuisinetype.txt", "w") as t:
+    t.write(cuisine_q)
 
-    #return search_q, cuisine_q
+  #return search_q, cuisine_q
 
-else:
+else:  
   print("Error, unable to retrieve. Server response code is: ", 
         resp.status_code)

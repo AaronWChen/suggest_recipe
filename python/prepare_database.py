@@ -183,7 +183,7 @@ def find_closest_recipes(filtered_ingred_word_matrix, recipe_tfidf, X_df):
     res_cos_sim = cosine_similarity(filtered_ingred_word_matrix, search_vec)
     top_five = np.argsort(res_cos_sim.flatten())[-5:][::-1]
     proximity = res_cos_sim[top_five]
-    recipe_ids = [filtered_ingred_matrix.iloc[idx].name for idx in top_five]
+    recipe_ids = [filtered_ingred_word_matrix.iloc[idx].name for idx in top_five]
     suggest_df = X_df.loc[recipe_ids]
     return suggest_df, proximity
 
