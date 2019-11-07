@@ -16,3 +16,23 @@ test.txt
 
 # Credentials
 secrets/
+
+# iPynb
+.ipynb_checkpoints/
+python/.ipynb_checkpoints/
+
+.vscode/
+python/.vscode
+
+python/__pycache__/
+
+test.json
+train.json
+
+capstone-flask-app-template-seattle-ds-080519/
+
+food2vec/
+
+recipe-vectorizer
+
+raw_data/recipes-en-201706/
