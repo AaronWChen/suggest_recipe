@@ -8,7 +8,6 @@ recipes based on cosine similarity distances for each list of ingredients.
 import requests
 import json
 import csv
-#import pymongo
 from datetime import datetime
 import joblib
 import re
@@ -70,6 +69,13 @@ def filter_out_cuisine(ingred_word_matrix,
   return filtered_ingred_word_matrix
 
 
+def picture_placer(filename):
+  # This function takes in a filename and returns the relative location inside
+  # an HTML tag
+  location = f'photos/{filename}'
+  return location
+
+
 def find_closest_recipes(filtered_ingred_word_matrix, 
                           recipe_tfidf, 
                           X_df):
@@ -91,7 +97,9 @@ def find_closest_recipes(filtered_ingred_word_matrix,
   expand_photo_df = pd.concat([full_df.drop(["photo_data"], axis=1), 
                                 full_df["photo_data"].apply(pd.Series)], axis=1)
   reduced = expand_photo_df[['title', 'url', 'filename', 'imputed_label', 'ingredients', 'cosine_similarity']].dropna(axis=1)
+  reduced['filename_display'] = reduced['filename'].apply(picture_placer)
   return reduced
+
 
 def find_similar_dishes(dish_name, cuisine_name):
   prepped, ingred_tfidf, ingred_word_matrix = import_stored_files()
@@ -191,14 +199,9 @@ def find_similar_dishes(dish_name, cuisine_name):
     query_similar = find_closest_recipes(filtered_ingred_word_matrix=query_matrix, 
                                                                 recipe_tfidf=query_tfidf, 
                                                                 X_df=prepped)
-    return query_similar.to_html()
-    # reduced_query = query_similar[['title', 
-    #                               'url', 
-    #                               'filename',
-    #                               'imputed_label',
-    #                               'ingredients', 
-    #                               'cosine_similarity']]
-    # return reduced_query.to_html() #("../write_data/results.html")
+    
+    return query_similar.to_dict(orient='records')
+    
     
   else:
     return("Error, unable to retrieve. Server response code is: ", 
