@@ -43,8 +43,8 @@ def import_stored_files():
 
 
 def transform_tfidf(ingred_tfidf, recipe):
-  # This function takes in a TFIDF Vectorizer object and a recipe (list of 
-  # ingredients), then creates/transforms the given recipe into a TFIDF form
+  # This function takes in a TFIDF Vectorizer object and a recipe, then 
+  # creates/transforms the given recipe into a TFIDF form
 
   recipe = [' '.join(recipe['ingredients'][0])]
   response = ingred_tfidf.transform(recipe)
@@ -76,6 +76,12 @@ def picture_placer(filename):
   return location
 
 
+def link_maker(recipe_link):
+  # This function takes in the incomplete recipe link from the dataframe and 
+  # returns the complete one.
+  full_link = f'https://www.epicurious.com{recipe_link}'
+  return full_link
+
 def find_closest_recipes(filtered_ingred_word_matrix, 
                           recipe_tfidf, 
                           X_df):
@@ -97,7 +103,10 @@ def find_closest_recipes(filtered_ingred_word_matrix,
   expand_photo_df = pd.concat([full_df.drop(["photo_data"], axis=1), 
                                 full_df["photo_data"].apply(pd.Series)], axis=1)
   reduced = expand_photo_df[['title', 'url', 'filename', 'imputed_label', 'ingredients', 'cosine_similarity']].dropna(axis=1)
-  reduced['filename_display'] = reduced['filename'].apply(picture_placer)
+  reduced['photo'] = reduced['filename'].apply(picture_placer)
+  reduced['fixed_url'] = reduced["url"].apply(link_maker)
+  reduced['rounded'] = reduced['cosine_similarity'].round(3)
+  reduced = reduced.drop('url', axis=1)
   return reduced
 
 
@@ -197,8 +206,8 @@ def find_similar_dishes(dish_name, cuisine_name):
                                       tfidf=ingred_tfidf)
                                       
     query_similar = find_closest_recipes(filtered_ingred_word_matrix=query_matrix, 
-                                                                recipe_tfidf=query_tfidf, 
-                                                                X_df=prepped)
+                                          recipe_tfidf=query_tfidf, 
+                                          X_df=prepped)
     
     return query_similar.to_dict(orient='records')
     

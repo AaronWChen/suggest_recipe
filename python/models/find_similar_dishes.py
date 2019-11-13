@@ -8,6 +8,7 @@ recipes based on cosine similarity distances for each list of ingredients.
 import requests
 import json
 import csv
+#import pymongo
 from datetime import datetime
 import joblib
 import re
@@ -43,8 +44,8 @@ def import_stored_files():
 
 
 def transform_tfidf(ingred_tfidf, recipe):
-  # This function takes in a TFIDF Vectorizer object and a recipe (list of 
-  # ingredients), then creates/transforms the given recipe into a TFIDF form
+  # This function takes in a TFIDF Vectorizer object and a recipe, then 
+  # creates/transforms the given recipe into a TFIDF form
 
   recipe = [' '.join(recipe['ingredients'][0])]
   response = ingred_tfidf.transform(recipe)
@@ -69,13 +70,6 @@ def filter_out_cuisine(ingred_word_matrix,
   return filtered_ingred_word_matrix
 
 
-def picture_placer(filename):
-  # This function takes in a filename and returns the relative location inside
-  # an HTML tag
-  location = f'photos/{filename}'
-  return location
-
-
 def find_closest_recipes(filtered_ingred_word_matrix, 
                           recipe_tfidf, 
                           X_df):
@@ -87,22 +81,14 @@ def find_closest_recipes(filtered_ingred_word_matrix,
   search_vec = np.array(recipe_tfidf).reshape(1,-1)
   res_cos_sim = cosine_similarity(filtered_ingred_word_matrix, search_vec)
   top_five = np.argsort(res_cos_sim.flatten())[-5:][::-1]
-  
+  proximity = res_cos_sim[top_five]
   recipe_ids = [filtered_ingred_word_matrix.iloc[idx].name for idx in top_five]
   suggest_df = X_df.loc[recipe_ids]
-  proximity = pd.DataFrame(data=res_cos_sim[top_five], 
-                            columns=['cosine_similarity'], 
-                            index=suggest_df.index)
-  full_df = pd.concat([suggest_df, proximity], axis=1)
-  expand_photo_df = pd.concat([full_df.drop(["photo_data"], axis=1), 
-                                full_df["photo_data"].apply(pd.Series)], axis=1)
-  reduced = expand_photo_df[['title', 'url', 'filename', 'imputed_label', 'ingredients', 'cosine_similarity']].dropna(axis=1)
-  reduced['filename_display'] = reduced['filename'].apply(picture_placer)
-  return reduced
+  suggest_df = pd.concat([suggest_df, proximity])
+  return suggest_df
 
-
-def find_similar_dishes(dish_name, cuisine_name):
-  prepped, ingred_tfidf, ingred_word_matrix = import_stored_files()
+def __main__(dish_name, cuisine_name):
+  import_stored_files()
   # This function calls the Edamam API, stores the results as a JSON, and 
   # stores the timestamp, dish name, and cuisine name/classification in a 
   # separate csv.
@@ -111,12 +97,15 @@ def find_similar_dishes(dish_name, cuisine_name):
 
   api_base = "https://api.edamam.com/search?"
 
+  search_q = dish_name
+  cuisine_q = cuisine_name
+
   # Level up:
   # Implement lemmatization using trained dataset on input in order to make 
   # future database be less likely to have redundant entries 
   # (e.g., taco vs tacos)
 
-  q = f"q={dish_name}"
+  q = f"q={search_q}"
 
   # Level up:
   # Check a database of dishes to see if this query has been asked for already
@@ -124,16 +113,15 @@ def find_similar_dishes(dish_name, cuisine_name):
 
   # Currently, just does an API call, may hit API limit if continuing with this
   # version
-  f = open("../secrets/edamam.json","r")
-  cred = json.load(f)
-  f.close()
+  # with open("../secrets/edamam.json","r") as f:
+  #   cred = json.load(f)
 
   app_id = cred["id"]
   app_id_s = f"&app_id=${app_id}"
 
   app_key = cred["key"]
   app_key_s = f"&app_key=${app_key}"
-  
+
   # Level up: 
   # Explicitly ask for a few recipes using limiter and make an "average version"
   # of the input in order to get better results from the API call
@@ -147,15 +135,14 @@ def find_similar_dishes(dish_name, cuisine_name):
   if resp.status_code == 200:
     response_dict = resp.json()
     resp_dict_hits = response_dict['hits']
-    
+    count = 0
+
     # Store the API result into a JSON and the cuisine type and dish name into a 
     # csv
-    # Heroku does not save files to directory
-    # Can work with EC2
-    with open(f"../write_data/{dt_string}_{dish_name}_edamam_api_return.json", "w") as f:
+    with open(f"../write_data/{dt_string}_{search_q}_edamam_api_return.json", "w") as f:
       json.dump(resp_dict_hits, f)
 
-    fields = [dt_string, dish_name, cuisine_name]
+    fields = [dt_string, search_q, cuisine_q]
     with open("../write_data/user_requests.csv", "a", newline='') as f:
       writer = csv.writer(f)
       writer.writerow(fields)
@@ -180,7 +167,7 @@ def find_similar_dishes(dish_name, cuisine_name):
 
     recipe_df = pd.DataFrame(all_recipes)
 
-    one_recipe = []
+    one_recipe =[]
 
     for listing in recipe_df['ingredients']:
         for ingred in listing:
@@ -188,21 +175,22 @@ def find_similar_dishes(dish_name, cuisine_name):
         
     one_recipe = list(set(one_recipe))
 
-    query_df = pd.DataFrame(data={'name': dish_name, 'ingredients': [one_recipe], 'cuisine': cuisine_name})
+    query_df = pd.DataFrame(data={'name': search_q, 'ingredients': [one_recipe], 'cuisine': cuisine_q})
 
     query_tfidf = transform_tfidf(ingred_tfidf=ingred_tfidf, recipe=query_df)
     query_matrix = filter_out_cuisine(ingred_word_matrix=ingred_word_matrix, 
                                       X_df=prepped, 
-                                      cuisine_name=cuisine_name, 
+                                      cuisine_name=cuisine_q, 
                                       tfidf=ingred_tfidf)
                                       
     query_similar = find_closest_recipes(filtered_ingred_word_matrix=query_matrix, 
                                                                 recipe_tfidf=query_tfidf, 
                                                                 X_df=prepped)
-    
-    return query_similar.to_dict(orient='records')
-    
-    
+
+    print(query_similar)
+    query_similar.to_html("../write_data/results.html")
+    #print(query_similar_values)
+
   else:
-    return("Error, unable to retrieve. Server response code is: ", 
+    print("Error, unable to retrieve. Server response code is: ", 
           resp.status_code)
