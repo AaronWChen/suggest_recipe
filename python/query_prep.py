@@ -59,6 +59,3 @@ all_recipes = {'url': urls,
 recipe_df = pd.DataFrame(all_recipes)
 
 recipe_df.to_json("../write_data/recipe_df.json")
-
-# with open("../write_data/recipe_df.json", 'w') as df:
-#   json.dump(recipe_df, df)
