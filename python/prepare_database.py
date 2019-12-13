@@ -71,8 +71,8 @@ def load_data(filepath, test_size=0.1, random_state=10):
     with open(filepath, "r") as f:
         datastore = json.load(f)
     datastore_df = pd.DataFrame(datastore)
-    X_train, X_test = train_test_split(
-        datastore_df, test_size=test_size, random_state=random_state
+    X_train, X_test = train_test_split(datastore_df, 
+                              test_size=test_size, random_state=random_state
     )
     return X_train, X_test
 
